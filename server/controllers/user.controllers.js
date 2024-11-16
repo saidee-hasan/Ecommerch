@@ -4,6 +4,7 @@ import verifyEmailTemplate from "../utils/verifyEmailTemplate.js";
 import sendEmail from "../config/sendEmail.js";
 import genertedRefreshToken from "../utils/generatedRefreshToken.js";
 import generatedAccessToken from "../utils/generatedAccessToken.js";
+import uploadImageCloudinary from "../utils/uploadImageClodinary.js";
 
 export async function registerUserController(request,response){
     try {
@@ -200,6 +201,77 @@ export async function logoutController(request,response){
             error : false,
             success : true
         })
+    } catch (error) {
+        return response.status(500).json({
+            message : error.message || error,
+            error : true,
+            success : false
+        })
+    }
+}
+
+
+//upload user avatar
+export async  function uploadAvatar(request,response){
+    try {
+        const userId = request.userId // auth middlware
+        const image = request.file  // multer middleware
+
+        const upload = await uploadImageCloudinary(image)
+        
+        const updateUser = await UserModel.findByIdAndUpdate(userId,{
+            avatar : upload.url
+        })
+
+        return response.json({
+            message : "upload profile",
+            success : true,
+            error : false,
+            data : {
+                _id : userId,
+                avatar : upload.url
+            }
+        })
+
+    } catch (error) {
+        return response.status(500).json({
+            message : error.message || error,
+            error : true,
+            success : false
+        })
+    }
+}
+
+
+
+//update user details
+export async function updateUserDetails(request,response){
+    try {
+        const userId = request.userId //auth middleware
+        const { name, email, mobile, password } = request.body 
+
+        let hashPassword = ""
+
+        if(password){
+            const salt = await bcryptjs.genSalt(10)
+            hashPassword = await bcryptjs.hash(password,salt)
+        }
+
+        const updateUser = await UserModel.findOneAndUpdate({ _id : userId},{
+            ...(name && { name : name }),
+            ...(email && { email : email }),
+            ...(mobile && { mobile : mobile }),
+            ...(password && { password : hashPassword })
+        })
+
+        return response.json({
+            message : "Updated successfully",
+            error : false,
+            success : true,
+            data : updateUser
+        })
+
+
     } catch (error) {
         return response.status(500).json({
             message : error.message || error,
